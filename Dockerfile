@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
 # Set Puppeteer to use installed Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_ARGS="--no-sandbox --disable-setuid-sandbox"
 
 # Create app directory
 WORKDIR /app
@@ -47,7 +48,16 @@ RUN npm run build
 RUN npm prune --production
 
 # Create volume mount point for WhatsApp session
-RUN mkdir -p /data/wwebjs_auth && chmod 777 /data/wwebjs_auth
+RUN mkdir -p /data/wwebjs_auth && chmod -R 777 /data
+
+# Create user for running the app (security best practice)
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set ownership of app directory
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 3000
