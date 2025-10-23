@@ -4,5 +4,6 @@
   "migrations-table": "pgmigrations",
   "schema": "public",
   "count": 1,
-  "timestamp": true
+  "timestamp": true,
+  "check-order": false
 }

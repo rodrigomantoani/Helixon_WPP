@@ -13,9 +13,19 @@ dotenv.config();
 const requiredEnvVars = [
   'DATABASE_URL',
   'OPENAI_API_KEY',
-  'MERCADOPAGO_ACCESS_TOKEN',
   'WEBHOOK_URL',
 ];
+
+// Optional but recommended
+const optionalEnvVars = ['MERCADOPAGO_ACCESS_TOKEN', 'MERCADOPAGO_PUBLIC_KEY'];
+const missingOptional = optionalEnvVars.filter((envVar) => !process.env[envVar]);
+
+if (missingOptional.length > 0) {
+  logger.warn(
+    { missingOptional },
+    '⚠️  Optional environment variables missing. Payment features will be disabled.'
+  );
+}
 
 const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
 

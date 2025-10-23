@@ -21,6 +21,10 @@ export async function generatePaymentLink(order: Order): Promise<PaymentLinkResu
     const product: Product = productResult.rows[0];
 
     // Create preference
+    if (!preferenceClient) {
+      throw new Error('MercadoPago is not configured');
+    }
+    
     const preference = await preferenceClient.create({
       body: {
         items: [

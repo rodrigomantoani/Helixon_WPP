@@ -5,7 +5,6 @@ import { conversationService } from '../services/conversationService';
 import { orderService } from '../services/orderService';
 import { generateChatCompletion } from '../ai/openai';
 import { conversationContext } from '../ai/context';
-import { generatePaymentLink } from '../payment/paymentLink';
 import { query } from '../database/connection';
 import { DISCLAIMERS } from '../config/constants';
 import logger from '../utils/logger';
@@ -105,7 +104,7 @@ export async function handleIncomingMessage(msg: WWebMessage): Promise<void> {
       const toolCallData = JSON.parse(aiResponse);
       
       if (toolCallData.type === 'tool_call') {
-        aiResponse = await handleToolCall(toolCallData, customer.id, msg);
+        aiResponse = await handleToolCall(toolCallData);
       }
     } catch {
       // Not a tool call, proceed with regular response
@@ -137,7 +136,7 @@ export async function handleIncomingMessage(msg: WWebMessage): Promise<void> {
   }
 }
 
-async function handleToolCall(toolCall: any, customerId: string, msg: WWebMessage): Promise<string> {
+async function handleToolCall(toolCall: any): Promise<string> {
   const { function: functionName, arguments: args } = toolCall;
 
   logger.info({ functionName, args }, 'Handling tool call');

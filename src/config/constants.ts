@@ -12,8 +12,9 @@ export const OPENAI_CONFIG = {
 };
 
 export const MERCADOPAGO_CONFIG = {
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
-  publicKey: process.env.MERCADOPAGO_PUBLIC_KEY!,
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || '',
+  publicKey: process.env.MERCADOPAGO_PUBLIC_KEY || '',
+  enabled: !!(process.env.MERCADOPAGO_ACCESS_TOKEN && process.env.MERCADOPAGO_PUBLIC_KEY),
 };
 
 export const DATABASE_CONFIG = {

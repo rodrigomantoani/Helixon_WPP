@@ -48,9 +48,8 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
 ];
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant' | 'function';
+  role: 'system' | 'user' | 'assistant';
   content: string;
-  name?: string;
 }
 
 export async function generateChatCompletion(
@@ -64,13 +63,13 @@ export async function generateChatCompletion(
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           ...messages,
-        ],
+        ] as any,
         max_tokens: OPENAI_CONFIG.maxTokens,
         temperature,
         tools,
         tool_choice: 'auto',
       })
-    );
+    ) as any;
 
     const choice = response.choices[0];
     

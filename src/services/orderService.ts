@@ -45,8 +45,7 @@ export class OrderService {
 
   async updatePaymentInfo(
     orderId: string,
-    preferenceId: string,
-    paymentLink: string
+    preferenceId: string
   ): Promise<void> {
     try {
       await query(
