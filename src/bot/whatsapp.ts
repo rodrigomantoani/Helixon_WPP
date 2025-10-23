@@ -38,6 +38,11 @@ export function createWhatsAppClient(): Client {
         '--single-process',
       ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+      timeout: 60000, // 60 seconds timeout
+    },
+    webVersionCache: {
+      type: 'remote',
+      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
     },
   });
 
