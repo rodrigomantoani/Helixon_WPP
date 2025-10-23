@@ -73,8 +73,15 @@ export async function initializeWhatsAppClient(client: Client): Promise<void> {
   try {
     logger.info('Initializing WhatsApp client...');
     await client.initialize();
-  } catch (error) {
-    logger.error({ error }, 'Failed to initialize WhatsApp client');
+  } catch (error: any) {
+    logger.error(
+      { 
+        error: error.message, 
+        stack: error.stack,
+        name: error.name 
+      }, 
+      'Failed to initialize WhatsApp client'
+    );
     throw error;
   }
 }
