@@ -89,13 +89,29 @@ export function createWhatsAppClient(): Client {
 export async function initializeWhatsAppClient(client: Client): Promise<void> {
   try {
     logger.info('Initializing WhatsApp client...');
+    logger.info({ 
+      authDir: WHATSAPP_CONFIG.authDir,
+      chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
+    }, 'WhatsApp config');
+    
     await client.initialize();
+    logger.info('WhatsApp client initialized successfully!');
   } catch (error: any) {
+    // Log everything we can about the error
+    console.error('=== WHATSAPP INITIALIZATION ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error name:', error.name);
+    console.error('Error stack:', error.stack);
+    console.error('Full error:', JSON.stringify(error, null, 2));
+    console.error('=====================================');
+    
     logger.error(
       { 
         error: error.message, 
         stack: error.stack,
-        name: error.name 
+        name: error.name,
+        code: error.code,
+        fullError: error
       }, 
       'Failed to initialize WhatsApp client'
     );
