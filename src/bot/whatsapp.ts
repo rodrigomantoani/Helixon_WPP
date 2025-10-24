@@ -105,6 +105,20 @@ export async function initializeWhatsAppClient(client: Client): Promise<void> {
       chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
     }, 'WhatsApp config');
     
+    // Clean up any Chromium lock files
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const authPath = path.resolve(WHATSAPP_CONFIG.authDir);
+      const lockFile = path.join(authPath, 'SingletonLock');
+      if (fs.existsSync(lockFile)) {
+        fs.unlinkSync(lockFile);
+        logger.info('Removed Chromium lock file');
+      }
+    } catch (cleanupError) {
+      logger.warn({ cleanupError }, 'Failed to clean lock file (non-critical)');
+    }
+    
     await client.initialize();
     logger.info('WhatsApp client initialized successfully!');
   } catch (error: any) {
