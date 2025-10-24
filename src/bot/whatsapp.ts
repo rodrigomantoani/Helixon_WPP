@@ -37,6 +37,9 @@ export function createWhatsAppClient(): Client {
         '--disable-blink-features=AutomationControlled',
         '--disable-features=site-per-process',
         '--single-process',
+        '--disable-crash-reporter',
+        '--crash-dumps-dir=/tmp',
+        '--disable-breakpad',
       ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
       timeout: 60000, // 60 seconds timeout
