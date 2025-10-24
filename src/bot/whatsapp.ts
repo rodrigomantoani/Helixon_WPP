@@ -19,6 +19,7 @@ export function createWhatsAppClient(): Client {
     puppeteer: {
       headless: true,
       args: [
+        `--user-data-dir=/tmp/chrome-user-data-${Date.now()}`,
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
