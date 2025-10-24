@@ -7,6 +7,7 @@ import { getQRCode } from './bot/whatsapp';
 import { SERVER_CONFIG } from './config/constants';
 import logger from './utils/logger';
 import QRCode from 'qrcode';
+import { getWhatsAppStatus } from './state/whatsappStatus';
 
 export function createServer() {
   const app = express();
@@ -33,6 +34,7 @@ export function createServer() {
       timestamp: new Date().toISOString(),
       service: 'helixon-wpp-bot',
       version: '1.0.0',
+      whatsapp: getWhatsAppStatus(),
     });
   });
 

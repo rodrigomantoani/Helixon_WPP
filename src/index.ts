@@ -5,6 +5,8 @@ import { handleIncomingMessage } from './bot/messageHandler';
 import { setWhatsAppClient } from './payment/webhook';
 import { closePool } from './database/connection';
 import logger from './utils/logger';
+import { setWhatsAppStatus } from './state/whatsappStatus';
+import { Client } from 'whatsapp-web.js';
 
 // Load environment variables
 dotenv.config();
@@ -37,14 +39,47 @@ if (missingEnvVars.length > 0) {
   process.exit(1);
 }
 
+// Retry configuration for WhatsApp initialization
+let retryDelayMs = 10000; // Start with 10 seconds
+const MAX_RETRY_DELAY_MS = 60000; // Max 60 seconds
+
+function startWhatsAppInitInBackground(client: Client): void {
+  setWhatsAppStatus('initializing');
+  logger.info('Starting WhatsApp initialization in background...');
+
+  initializeWhatsAppClient(client)
+    .then(() => {
+      logger.info('✅ WhatsApp client initialized successfully!');
+      // Reset retry delay on success
+      retryDelayMs = 10000;
+    })
+    .catch((error) => {
+      logger.error({ error }, '❌ WhatsApp initialization failed');
+      setWhatsAppStatus('error', error);
+      
+      // Schedule retry with exponential backoff
+      scheduleWhatsAppRetry(client);
+    });
+}
+
+function scheduleWhatsAppRetry(client: Client): void {
+  const delay = Math.min(retryDelayMs, MAX_RETRY_DELAY_MS);
+  logger.warn(`⏱️ Retrying WhatsApp initialization in ${delay / 1000}s...`);
+  
+  setTimeout(() => {
+    // Exponential backoff: double the delay for next retry
+    retryDelayMs = Math.min(retryDelayMs * 2, MAX_RETRY_DELAY_MS);
+    startWhatsAppInitInBackground(client);
+  }, delay);
+}
+
 async function main() {
   try {
     logger.info('🚀 Starting Helixon WhatsApp Bot...');
 
-    // Create and start Express server
+    // Create Express server first
     const app = createServer();
-    startServer(app);
-
+    
     // Create WhatsApp client
     const whatsappClient = createWhatsAppClient();
 
@@ -60,11 +95,15 @@ async function main() {
       }
     });
 
-    // Initialize WhatsApp client
-    await initializeWhatsAppClient(whatsappClient);
+    // Start HTTP server BEFORE WhatsApp initialization
+    // This ensures health checks pass immediately
+    startServer(app);
+    logger.info('✅ HTTP server is ready and accepting health checks');
 
-    logger.info('✅ Helixon WhatsApp Bot is fully operational!');
-    logger.info('📱 Waiting for messages...');
+    // Initialize WhatsApp client in background (non-blocking)
+    startWhatsAppInitInBackground(whatsappClient);
+
+    logger.info('📱 Bot startup complete. WhatsApp connecting in background...');
   } catch (error) {
     logger.error({ error }, 'Failed to start application');
     process.exit(1);

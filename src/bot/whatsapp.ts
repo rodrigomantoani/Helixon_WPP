@@ -3,6 +3,7 @@ import { Client, LocalAuth } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 import { WHATSAPP_CONFIG } from '../config/constants';
 import logger from '../utils/logger';
+import { setWhatsAppStatus } from '../state/whatsappStatus';
 
 let qrCodeData: string | null = null;
 
@@ -49,6 +50,7 @@ export function createWhatsAppClient(): Client {
   // QR Code event
   client.on('qr', (qr) => {
     logger.info('QR Code received, scan with your phone');
+    setWhatsAppStatus('qr_waiting');
     qrCodeData = qr;
     
     // Show QR in terminal
@@ -58,23 +60,27 @@ export function createWhatsAppClient(): Client {
   // Ready event
   client.on('ready', () => {
     logger.info('✅ WhatsApp client is ready!');
+    setWhatsAppStatus('ready');
     qrCodeData = null; // Clear QR after successful connection
   });
 
   // Authenticated event
   client.on('authenticated', () => {
     logger.info('WhatsApp client authenticated');
+    setWhatsAppStatus('authenticated');
   });
 
   // Authentication failure event
   client.on('auth_failure', (msg) => {
     logger.error({ msg }, 'WhatsApp authentication failed');
+    setWhatsAppStatus('error', msg);
     qrCodeData = null;
   });
 
   // Disconnected event
   client.on('disconnected', (reason) => {
     logger.warn({ reason }, 'WhatsApp client disconnected');
+    setWhatsAppStatus('disconnected');
     qrCodeData = null;
   });
 
