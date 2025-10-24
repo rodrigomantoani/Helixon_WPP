@@ -3,7 +3,6 @@ import makeWASocket, {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   WAMessage,
-  Browsers,
 } from '@whiskeysockets/baileys';
 // @ts-ignore
 import qrcode from 'qrcode-terminal';
@@ -35,10 +34,11 @@ export async function createWhatsAppClient() {
     version,
     auth: state,
     printQRInTerminal: false,
-    browser: Browsers.ubuntu('Desktop'),
+    browser: ['Chrome (Linux)', '', ''],
     defaultQueryTimeoutMs: 60000,
     logger: logger.child({ module: 'baileys' }),
     markOnlineOnConnect: true,
+    syncFullHistory: false,
   });
   
   // QR Code event
