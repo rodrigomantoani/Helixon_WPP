@@ -50,19 +50,9 @@ RUN npm prune --production
 # Create volume mount point for WhatsApp session
 RUN mkdir -p /data/wwebjs_auth && chmod -R 777 /data
 
-# Create user for running the app (security best practice)
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-
-# Create temp directories for Chromium with proper permissions
+# Create temp directories for Chromium
 RUN mkdir -p /tmp/.X11-unix /tmp/chrome-crashpad && \
-    chmod -R 1777 /tmp && \
-    chown -R appuser:appuser /tmp/chrome-crashpad
-
-# Set ownership of app directory
-RUN chown -R appuser:appuser /app /data
-
-# Switch to non-root user
-USER appuser
+    chmod -R 1777 /tmp
 
 # Expose port
 EXPOSE 3000
