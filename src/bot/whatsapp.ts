@@ -105,18 +105,33 @@ export async function initializeWhatsAppClient(client: Client): Promise<void> {
       chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
     }, 'WhatsApp config');
     
-    // Clean up any Chromium lock files
+    // Clean up any Chromium lock files recursively
     try {
       const fs = require('fs');
       const path = require('path');
       const authPath = path.resolve(WHATSAPP_CONFIG.authDir);
-      const lockFile = path.join(authPath, 'SingletonLock');
-      if (fs.existsSync(lockFile)) {
-        fs.unlinkSync(lockFile);
-        logger.info('Removed Chromium lock file');
-      }
+      
+      // Function to find and remove all SingletonLock files
+      const removeLockFiles = (dir: string) => {
+        if (!fs.existsSync(dir)) return;
+        
+        const files = fs.readdirSync(dir);
+        files.forEach((file: string) => {
+          const fullPath = path.join(dir, file);
+          const stat = fs.statSync(fullPath);
+          
+          if (stat.isDirectory()) {
+            removeLockFiles(fullPath);
+          } else if (file === 'SingletonLock') {
+            fs.unlinkSync(fullPath);
+            logger.info({ path: fullPath }, 'Removed Chromium lock file');
+          }
+        });
+      };
+      
+      removeLockFiles(authPath);
     } catch (cleanupError) {
-      logger.warn({ cleanupError }, 'Failed to clean lock file (non-critical)');
+      logger.warn({ cleanupError }, 'Failed to clean lock files (non-critical)');
     }
     
     await client.initialize();

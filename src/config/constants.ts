@@ -29,7 +29,7 @@ export const SERVER_CONFIG = {
 };
 
 export const WHATSAPP_CONFIG = {
-  authDir: process.env.WWEBJS_AUTH_DIR || '.wwebjs_auth',
+  authDir: process.env.WWEBJS_AUTH_DIR || '/tmp/.wwebjs_auth',
 };
 
 // Disclaimers e avisos legais
