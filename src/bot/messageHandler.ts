@@ -1,4 +1,11 @@
-import { Message as WWebMessage } from 'whatsapp-web.js';
+// Message interface compatible with both whatsapp-web.js and Baileys adapter
+interface WWebMessage {
+  from: string;
+  body: string;
+  type: string;
+  getContact(): Promise<{ number: string; pushname?: string }>;
+  reply(text: string): Promise<void>;
+}
 import { parsePhoneNumber } from 'libphonenumber-js';
 import { customerService } from '../services/customerService';
 import { conversationService } from '../services/conversationService';

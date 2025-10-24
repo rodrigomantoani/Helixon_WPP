@@ -1,167 +1,101 @@
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import makeWASocket, {
+  DisconnectReason,
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  WAMessage,
+  Browsers,
+} from '@whiskeysockets/baileys';
 // @ts-ignore
 import qrcode from 'qrcode-terminal';
+import { Boom } from '@hapi/boom';
 import { WHATSAPP_CONFIG } from '../config/constants';
 import logger from '../utils/logger';
 import { setWhatsAppStatus } from '../state/whatsappStatus';
 
+let sock: ReturnType<typeof makeWASocket> | null = null;
 let qrCodeData: string | null = null;
 
 export function getQRCode(): string | null {
   return qrCodeData;
 }
 
-export function createWhatsAppClient(): Client {
-  const client = new Client({
-    authStrategy: new LocalAuth({
-      dataPath: WHATSAPP_CONFIG.authDir,
-    }),
-    puppeteer: {
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--disable-extensions',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-crash-reporter',
-        '--crash-dumps-dir=/tmp',
-        '--disable-breakpad',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-features=IsolateOrigins,site-per-process,ProcessSingletonClient',
-        '--disable-background-networking',
-        '--disable-default-apps',
-        '--disable-sync',
-        '--mute-audio',
-        '--no-default-browser-check',
-        '--metrics-recording-only',
-        // Allow multiple instances with random debugging port
-        '--remote-debugging-port=0',
-      ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-      timeout: 60000, // 60 seconds timeout
-    },
-  });
-
-  // QR Code event
-  client.on('qr', (qr) => {
-    logger.info('QR Code received, scan with your phone');
-    setWhatsAppStatus('qr_waiting');
-    qrCodeData = qr;
-    
-    // Show QR in terminal
-    qrcode.generate(qr, { small: true });
-  });
-
-  // Ready event
-  client.on('ready', () => {
-    logger.info('✅ WhatsApp client is ready!');
-    setWhatsAppStatus('ready');
-    qrCodeData = null; // Clear QR after successful connection
-  });
-
-  // Authenticated event
-  client.on('authenticated', () => {
-    logger.info('WhatsApp client authenticated');
-    setWhatsAppStatus('authenticated');
-  });
-
-  // Authentication failure event
-  client.on('auth_failure', (msg) => {
-    logger.error({ msg }, 'WhatsApp authentication failed');
-    setWhatsAppStatus('error', msg);
-    qrCodeData = null;
-  });
-
-  // Disconnected event
-  client.on('disconnected', (reason) => {
-    logger.warn({ reason }, 'WhatsApp client disconnected');
-    setWhatsAppStatus('disconnected');
-    qrCodeData = null;
-  });
-
-  // Loading screen event
-  client.on('loading_screen', (percent, message) => {
-    logger.debug({ percent, message }, 'Loading WhatsApp');
-  });
-
-  return client;
+export function getWhatsAppSocket() {
+  return sock;
 }
 
-export async function initializeWhatsAppClient(client: Client): Promise<void> {
-  try {
-    logger.info('Initializing WhatsApp client...');
-    logger.info({ 
-      authDir: WHATSAPP_CONFIG.authDir,
-      chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
-    }, 'WhatsApp config');
+export async function createWhatsAppClient() {
+  logger.info('Creating WhatsApp client with Baileys...');
+  
+  const { state, saveCreds } = await useMultiFileAuthState(WHATSAPP_CONFIG.authDir);
+  
+  const { version } = await fetchLatestBaileysVersion();
+  logger.info({ version: version.join('.') }, 'Using WhatsApp version');
+  
+  sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: false,
+    browser: Browsers.ubuntu('Desktop'),
+    defaultQueryTimeoutMs: 60000,
+    logger: logger.child({ module: 'baileys' }),
+    markOnlineOnConnect: true,
+  });
+  
+  // QR Code event
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect, qr } = update;
     
-    // Kill any existing Chromium processes to prevent singleton lock
-    try {
-      const { execSync } = require('child_process');
-      execSync('pkill -9 chromium || true', { stdio: 'ignore' });
-      logger.info('Killed any existing Chromium processes');
-      // Wait a bit for processes to fully terminate
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (killError) {
-      logger.warn({ killError }, 'Failed to kill Chromium processes (non-critical)');
+    if (qr) {
+      logger.info('QR Code received, scan with your phone');
+      setWhatsAppStatus('qr_waiting');
+      qrCodeData = qr;
+      qrcode.generate(qr, { small: true });
     }
     
-    // Clean up any Chromium lock files recursively
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const authPath = path.resolve(WHATSAPP_CONFIG.authDir);
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+      logger.info({ shouldReconnect }, 'Connection closed');
       
-      // Function to find and remove all SingletonLock files
-      const removeLockFiles = (dir: string) => {
-        if (!fs.existsSync(dir)) return;
-        
-        const files = fs.readdirSync(dir);
-        files.forEach((file: string) => {
-          const fullPath = path.join(dir, file);
-          const stat = fs.statSync(fullPath);
-          
-          if (stat.isDirectory()) {
-            removeLockFiles(fullPath);
-          } else if (file === 'SingletonLock') {
-            fs.unlinkSync(fullPath);
-            logger.info({ path: fullPath }, 'Removed Chromium lock file');
-          }
-        });
-      };
-      
-      removeLockFiles(authPath);
-    } catch (cleanupError) {
-      logger.warn({ cleanupError }, 'Failed to clean lock files (non-critical)');
+      if (shouldReconnect) {
+        setWhatsAppStatus('disconnected');
+      } else {
+        setWhatsAppStatus('error', 'Logged out');
+        qrCodeData = null;
+      }
+    } else if (connection === 'open') {
+      logger.info('✅ WhatsApp connection opened!');
+      setWhatsAppStatus('ready');
+      qrCodeData = null;
+    } else if (connection === 'connecting') {
+      setWhatsAppStatus('initializing');
     }
-    
-    await client.initialize();
-    logger.info('WhatsApp client initialized successfully!');
-  } catch (error: any) {
-    // Log everything we can about the error
-    console.error('=== WHATSAPP INITIALIZATION ERROR ===');
-    console.error('Error message:', error.message);
-    console.error('Error name:', error.name);
-    console.error('Error stack:', error.stack);
-    console.error('Full error:', JSON.stringify(error, null, 2));
-    console.error('=====================================');
-    
-    logger.error(
-      { 
-        error: error.message, 
-        stack: error.stack,
-        name: error.name,
-        code: error.code,
-        fullError: error
-      }, 
-      'Failed to initialize WhatsApp client'
-    );
-    throw error;
-  }
+  });
+  
+  sock.ev.on('creds.update', saveCreds);
+  
+  sock.ev.on('connection.update', (update) => {
+    if (update.connection === 'open' && !update.qr) {
+      logger.info('WhatsApp client authenticated');
+      setWhatsAppStatus('authenticated');
+    }
+  });
+  
+  return sock;
+}
+
+export async function initializeWhatsAppClient(_socket: ReturnType<typeof makeWASocket>): Promise<void> {
+  logger.info('Initializing WhatsApp client...');
+  logger.info({ authDir: WHATSAPP_CONFIG.authDir }, 'WhatsApp config');
+  logger.info('WhatsApp client initialized successfully!');
+}
+
+export async function sendMessage(jid: string, text: string) {
+  if (!sock) throw new Error('WhatsApp socket not initialized');
+  await sock.sendMessage(jid, { text });
+}
+
+export async function replyMessage(msg: WAMessage, text: string) {
+  if (!sock) throw new Error('WhatsApp socket not initialized');
+  const jid = msg.key.remoteJid!;
+  await sock.sendMessage(jid, { text }, { quoted: msg });
 }

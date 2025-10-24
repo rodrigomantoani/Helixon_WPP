@@ -2,11 +2,12 @@ import dotenv from 'dotenv';
 import { createServer, startServer } from './server';
 import { createWhatsAppClient, initializeWhatsAppClient } from './bot/whatsapp';
 import { handleIncomingMessage } from './bot/messageHandler';
+import { BaileysMessageAdapter } from './bot/baileysAdapter';
 import { setWhatsAppClient } from './payment/webhook';
 import { closePool } from './database/connection';
 import logger from './utils/logger';
 import { setWhatsAppStatus } from './state/whatsappStatus';
-import { Client } from 'whatsapp-web.js';
+import makeWASocket from '@whiskeysockets/baileys';
 
 // Load environment variables
 dotenv.config();
@@ -43,7 +44,7 @@ if (missingEnvVars.length > 0) {
 let retryDelayMs = 10000; // Start with 10 seconds
 const MAX_RETRY_DELAY_MS = 60000; // Max 60 seconds
 
-function startWhatsAppInitInBackground(client: Client): void {
+function startWhatsAppInitInBackground(client: ReturnType<typeof makeWASocket>): void {
   setWhatsAppStatus('initializing');
   logger.info('Starting WhatsApp initialization in background...');
 
@@ -62,7 +63,7 @@ function startWhatsAppInitInBackground(client: Client): void {
     });
 }
 
-function scheduleWhatsAppRetry(client: Client): void {
+function scheduleWhatsAppRetry(client: ReturnType<typeof makeWASocket>): void {
   const delay = Math.min(retryDelayMs, MAX_RETRY_DELAY_MS);
   logger.warn(`⏱️ Retrying WhatsApp initialization in ${delay / 1000}s...`);
   
@@ -81,17 +82,23 @@ async function main() {
     const app = createServer();
     
     // Create WhatsApp client
-    const whatsappClient = createWhatsAppClient();
+    const whatsappClient = await createWhatsAppClient();
 
     // Register WhatsApp client with webhook handler
     setWhatsAppClient(whatsappClient);
 
-    // Register message handler
-    whatsappClient.on('message', async (msg) => {
-      try {
-        await handleIncomingMessage(msg);
-      } catch (error) {
-        logger.error({ error }, 'Error in message handler');
+    // Register message handler for Baileys
+    whatsappClient.ev.on('messages.upsert', async ({ messages }) => {
+      for (const msg of messages) {
+        // Ignore messages from self and empty messages
+        if (msg.key.fromMe || !msg.message) continue;
+        
+        try {
+          const adapter = new BaileysMessageAdapter(msg);
+          await handleIncomingMessage(adapter as any);
+        } catch (error) {
+          logger.error({ error }, 'Error in message handler');
+        }
       }
     });
 

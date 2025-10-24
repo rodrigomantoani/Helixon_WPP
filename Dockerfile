@@ -1,34 +1,5 @@
 FROM node:20-slim
 
-# Install Chromium dependencies for Puppeteer
-RUN apt-get update && apt-get install -y \
-    chromium \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libx11-xcb1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    xdg-utils \
-    wget \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set Puppeteer to use installed Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV PUPPETEER_ARGS="--no-sandbox --disable-setuid-sandbox"
-
 # Create app directory
 WORKDIR /app
 
@@ -47,9 +18,8 @@ RUN npm run build
 # Remove devDependencies after build
 RUN npm prune --production
 
-# Create temp directories for Chromium and WhatsApp auth
-RUN mkdir -p /tmp/.X11-unix /tmp/chrome-crashpad /tmp/.wwebjs_auth && \
-    chmod -R 1777 /tmp
+# Create WhatsApp auth directory
+RUN mkdir -p /tmp/.wwebjs_auth && chmod -R 1777 /tmp
 
 # Expose port
 EXPOSE 3000

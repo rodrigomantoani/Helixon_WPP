@@ -104,7 +104,8 @@ export async function handleMercadoPagoWebhook(req: Request, res: Response) {
             `📦 Em breve você receberá informações sobre a entrega.\n\n` +
             `Obrigado pela compra! 🎉`;
 
-          await whatsappClient.sendMessage(customer.phone_e164 + '@c.us', message);
+          const jid = customer.phone_e164.replace('+', '') + '@s.whatsapp.net';
+          await whatsappClient.sendMessage(jid, { text: message });
           logger.info({ customerId: customer.id, orderId: order.id }, 'Payment confirmation sent via WhatsApp');
         }
       } catch (error) {
