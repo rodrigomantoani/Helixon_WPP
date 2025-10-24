@@ -33,15 +33,15 @@ export function createWhatsAppClient(): Client {
         '--crash-dumps-dir=/tmp',
         '--disable-breakpad',
         '--disable-blink-features=AutomationControlled',
-        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-features=IsolateOrigins,site-per-process,ProcessSingletonClient',
         '--disable-background-networking',
         '--disable-default-apps',
         '--disable-sync',
         '--mute-audio',
         '--no-default-browser-check',
         '--metrics-recording-only',
-        // Critical flag to prevent profile locking
-        '--disable-features=ProcessSingletonClient',
+        // Allow multiple instances with random debugging port
+        '--remote-debugging-port=0',
       ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
       timeout: 60000, // 60 seconds timeout
