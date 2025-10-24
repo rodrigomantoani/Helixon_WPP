@@ -105,6 +105,17 @@ export async function initializeWhatsAppClient(client: Client): Promise<void> {
       chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
     }, 'WhatsApp config');
     
+    // Kill any existing Chromium processes to prevent singleton lock
+    try {
+      const { execSync } = require('child_process');
+      execSync('pkill -9 chromium || true', { stdio: 'ignore' });
+      logger.info('Killed any existing Chromium processes');
+      // Wait a bit for processes to fully terminate
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (killError) {
+      logger.warn({ killError }, 'Failed to kill Chromium processes (non-critical)');
+    }
+    
     // Clean up any Chromium lock files recursively
     try {
       const fs = require('fs');
