@@ -47,11 +47,8 @@ RUN npm run build
 # Remove devDependencies after build
 RUN npm prune --production
 
-# Create volume mount point for WhatsApp session
-RUN mkdir -p /data/wwebjs_auth && chmod -R 777 /data
-
-# Create temp directories for Chromium
-RUN mkdir -p /tmp/.X11-unix /tmp/chrome-crashpad && \
+# Create temp directories for Chromium and WhatsApp auth
+RUN mkdir -p /tmp/.X11-unix /tmp/chrome-crashpad /tmp/.wwebjs_auth && \
     chmod -R 1777 /tmp
 
 # Expose port

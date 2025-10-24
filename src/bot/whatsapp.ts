@@ -12,13 +12,8 @@ export function getQRCode(): string | null {
 }
 
 export function createWhatsAppClient(): Client {
-  // Use unique session to avoid profile locks
-  const sessionId = `session-${Date.now()}`;
-  logger.info({ sessionId }, 'Creating WhatsApp client with unique session');
-  
   const client = new Client({
     authStrategy: new LocalAuth({
-      clientId: sessionId,
       dataPath: WHATSAPP_CONFIG.authDir,
     }),
     puppeteer: {
