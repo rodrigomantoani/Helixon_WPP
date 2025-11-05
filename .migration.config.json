@@ -1,0 +1,9 @@
+{
+  "database-url-var": "DATABASE_URL",
+  "dir": "src/database/migrations",
+  "migrations-table": "pgmigrations",
+  "schema": "public",
+  "count": 1,
+  "timestamp": true,
+  "check-order": false
+}
